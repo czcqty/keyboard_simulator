@@ -11,10 +11,37 @@ import subprocess
 import sys
 from pathlib import Path
 
-
 SCRIPT_DIR = Path(__file__).resolve().parent
 SOURCE_FILE = SCRIPT_DIR / "keyboard_simulator.py"
 APP_NAME = "keyboard_simulator"
+VENV_DIR = SCRIPT_DIR / ".venv"
+
+
+def in_virtualenv() -> bool:
+    return sys.prefix != getattr(sys, "base_prefix", sys.prefix) or hasattr(sys, "real_prefix")
+
+
+def venv_python() -> Path:
+    if sys.platform == "win32":
+        return VENV_DIR / "Scripts" / "python.exe"
+    return VENV_DIR / "bin" / "python"
+
+
+def ensure_virtualenv() -> None:
+    if in_virtualenv():
+        return
+
+    python_path = venv_python()
+    if not python_path.exists():
+        print(f"[错误] 未检测到本地虚拟环境: {VENV_DIR}", file=sys.stderr)
+        print("请先运行 'python init.py' 进行初始化！", file=sys.stderr)
+        raise SystemExit(1)
+
+    print("=" * 60, flush=True)
+    print(f"Switching to virtual environment: {python_path}", flush=True)
+    print("=" * 60, flush=True)
+    result = subprocess.run([str(python_path), str(Path(__file__).resolve()), *sys.argv[1:]], cwd=SCRIPT_DIR)
+    raise SystemExit(result.returncode)
 
 
 def run(cmd: list[str]) -> None:
@@ -74,9 +101,11 @@ def build() -> Path:
 
 
 def main() -> int:
+    ensure_virtualenv()
     build()
     return 0
 
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
